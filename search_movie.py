@@ -57,7 +57,7 @@ def search(message):
         markup.add(search_btn, related_btn, save_btn, filter_btn, saves_btn, help_btn)
         bot.send_message(message.chat.id, film_info, reply_markup=markup)
     else:
-        markup.add(related_btn, filter_btn, saves_btn, save_btn, help_btn)
+        markup.add(search_btn, related_btn, filter_btn, saves_btn, help_btn)
         bot.send_message(message.chat.id, "Фильм не найден :(", reply_markup=markup)
 
 

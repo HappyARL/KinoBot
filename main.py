@@ -2,7 +2,7 @@ import telebot
 import sqlite3
 
 import search_movie as search
-import filter_movie as filter
+# import filter_movie as filter
 import database_logic as data
 
 from telebot import types
@@ -78,6 +78,107 @@ def callback_worker(callback):
 
         markup.add(search_btn, filter_btn, saves_btn)
         bot.send_message(callback.message.chat.id, rule_text, reply_markup=markup)
+
+
+
+genre = None
+from_year = 0
+to_year = 0
+rating = 0.0
+country = None
+
+
+def process_genre_step(message):
+    global genre
+    genre = str(message.text)
+    text = """С какого по какой год искать? (1980-1990)
+    разница между годами должна быть не меньше 1!"""
+    msg = bot.send_message(message.chat.id, text)
+    bot.register_next_step_handler(msg, process_year_step)
+
+
+def process_year_step(message):
+    global from_year
+    global to_year
+
+    msg = str(message.text)
+    try:
+        time = msg.split("-")
+        from_year = int(time[0])
+        to_year = int(time[1])
+        if from_year >= to_year:
+            msg = bot.send_message(message.chat.id, "Первый год должен быть меньше второго!")
+            bot.register_next_step_handler(msg, process_year_step)
+        else:
+            msg = bot.send_message(message.chat.id, "Минимальный рейтинг (от 1 до 10)?")
+            bot.register_next_step_handler(msg, process_rating_step)
+    except:
+        msg = bot.send_message(message.chat.id, "Год должен быть числом от 1900 - 2023")
+        bot.register_next_step_handler(msg, process_year_step)
+
+
+
+def process_rating_step(message):
+    global rating
+    try:
+        rating = float(message.text)
+        msg = bot.send_message(message.chat.id, "Страна производства?")
+        bot.register_next_step_handler(msg, process_country_step)
+    except:
+        msg = bot.send_message(message.chat.id, "Рейтинг должен быть числом от 1 до 10")
+        bot.register_next_step_handler(msg, process_country_step)
+
+
+
+def process_country_step(message):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+
+    search_btn = types.InlineKeyboardButton("🔍 Найти фильм", callback_data='search')
+    filter_btn = types.InlineKeyboardButton("🔍 Подобрать фильм по критериям", callback_data='filter')
+    help_btn = types.InlineKeyboardButton("❓ Что ты умеешь?", callback_data='help')
+    markup.add(search_btn, filter_btn, help_btn)
+
+    global country
+    global genre
+    global from_year
+    global to_year
+    global rating
+    country = message.text
+
+    request = FilmSearchByFiltersRequest()
+    request.year_from = from_year
+    request.year_to = to_year
+    request.rating_from = rating
+    request.order = FilterOrder.RATING
+    request.add_genre(FilterGenre(1, genre))
+    # genre_list = genre.split(", ")
+    # id_iter = 1
+    # for genre_ in genre_list:
+    #     request.add_genre(FilterGenre(id_iter, genre_))
+    #     id_iter += 1
+
+    request.add_country(FilterCountry(1, country))
+
+    # Выполнить запрос с использованием фильтров и обрабатывать результаты, например:
+    films = api_client.films.send_film_search_by_filters_request(request)
+    film_info = ""
+    if len(films.items) != 0:
+        iter = 1
+        for film in films.items[:5]:
+            # форматирование информации о фильме
+            film_info += f"#{iter} : {film.name_ru}\n" \
+                         f"Год: {film.year}\n" \
+                         f"Рейтинг: {film.rating_kinopoisk}\n" \
+                         f"Постер фильма: {film.poster_url}\n\n"
+            bot.send_message(message.chat.id, film_info)
+            film_info = ""
+            iter += 1
+
+        film_info = f"Вот фильмы по вашему критерию из КиноПоиска"
+        bot.send_message(message.chat.id, film_info, reply_markup=markup)
+    else:
+        film_info = f"Ой! Что то не так, попробуйте еще раз"
+        bot.send_message(message.chat.id, film_info, reply_markup=markup)
 
 
 bot.polling()
