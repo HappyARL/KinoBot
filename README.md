@@ -1,4 +1,4 @@
-# KinoBot
+# [KinoBot](https://t.me/MovieLover404Bot)
 <img src="img/image1.png"  width="60%" height="30%">
 
 ---
